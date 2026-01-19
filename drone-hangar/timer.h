@@ -1,10 +1,9 @@
-#ifndef COMPONENTS_H
-#define COMPONENTS_H
+#ifndef TIMER_H
+#define TIMER_H
 
 #include <Arduino.h>
 #include <Servo.h>
 
-// --- TIMER CLASS ---
 class Timer {
   private:
     unsigned long startTime;

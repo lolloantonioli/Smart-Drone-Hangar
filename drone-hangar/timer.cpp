@@ -1,6 +1,5 @@
 #include "timer.h"
 
-// --- TIMER IMPLEMENTATION ---
 Timer::Timer() : active(false) {}
 
 void Timer::start() {
@@ -17,6 +16,8 @@ bool Timer::isActive() {
 }
 
 bool Timer::isExpired(unsigned long duration) {
-  if (!active) return false;
+  if (!active) {
+    return false;
+  }
   return (millis() - startTime >= duration);
 }

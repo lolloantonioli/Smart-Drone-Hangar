@@ -1,10 +1,9 @@
-#ifndef COMPONENTS_H
-#define COMPONENTS_H
+#ifndef TMP_SENSOR_H
+#define TMP_SENSOR_H
 
 #include <Arduino.h>
 #include <Servo.h>
 
-// --- TEMP SENSOR CLASS ---
 class TempSensor {
   private:
     int pin;

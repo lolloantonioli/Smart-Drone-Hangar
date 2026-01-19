@@ -1,13 +1,12 @@
-#ifndef COMPONENTS_H
-#define COMPONENTS_H
+#ifndef HANGAR_DOOR_H
+#define HANGAR_DOOR_H
 
 #include <Arduino.h>
 #include <Servo.h>
 
-// --- HANGAR DOOR CLASS ---
 class HangarDoor {
   private:
-    Servo servo;
+    Servo* servo;
     int pin;
     const int OPEN_ANGLE = 90;
     const int CLOSED_ANGLE = 0;

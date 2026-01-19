@@ -1,10 +1,9 @@
-#ifndef COMPONENTS_H
-#define COMPONENTS_H
+#ifndef SONAR_H
+#define SONAR_H
 
 #include <Arduino.h>
 #include <Servo.h>
 
-// --- SONAR CLASS ---
 class Sonar {
   private:
     int trigPin, echoPin;

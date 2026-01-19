@@ -1,6 +1,5 @@
 #include "sonar.h"
 
-// --- SONAR IMPLEMENTATION ---
 Sonar::Sonar(int trig, int echo) : trigPin(trig), echoPin(echo) {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
