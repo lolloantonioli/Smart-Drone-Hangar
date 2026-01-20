@@ -24,53 +24,5 @@ The FSM (implemented in `LogicTask`) manages the system behavior through the fol
 * **PREALARM:** Triggered by `Temp1`. Suspends new operations but **allows ongoing takeoff/landing to complete**.
 * **ALARM:** Triggered by `Temp2` or timeout. **Immediately closes the door** for safety, activates LED L3 (Red), and locks the system until the RESET button is pressed.
 
-```mermaid
-stateDiagram-v2
-    [*] --> INSIDE
-
-    state "INSIDE" as INSIDE
-    state "TAKE OFF" as TAKEOFF
-    state "DRONE OUT" as DRONEOUT
-    state "LANDING" as LANDING
-    state "PRE-ALARM" as PREALARM
-    state "ALARM" as ALARM
-
-    INSIDE: Door Closed, L1 ON
-    INSIDE: Display "DRONE INSIDE"
-
-    TAKEOFF: Door Open, L2 Blink
-    TAKEOFF: Display "TAKE OFF"
-
-    DRONEOUT: Door Closed
-    DRONEOUT: Display "DRONE OUT"
-
-    LANDING: Door Open, L2 Blink
-    LANDING: Display "LANDING"
-
-    PREALARM: L2 Blink (if moving)
-    PREALARM: Allow move completion
-
-    ALARM: Door Closed, L3 ON
-    ALARM: Display "ALARM"
-
-    INSIDE --> TAKEOFF: CMD:TAKEOFF
-    TAKEOFF --> DRONEOUT: Dist > D1 (for T1)
-    DRONEOUT --> LANDING: CMD:LAND & Motion
-    LANDING --> INSIDE: Dist < D2 (for T2)
-
-    INSIDE --> PREALARM: Temp >= Temp1 (for T3)
-    TAKEOFF --> PREALARM: Temp >= Temp1 (for T3)
-    LANDING --> PREALARM: Temp >= Temp1 (for T3)
-
-    PREALARM --> INSIDE: Temp < Temp1
-    PREALARM --> TAKEOFF: Temp < Temp1
-    PREALARM --> LANDING: Temp < Temp1
-
-    PREALARM --> ALARM: Time > T4
-    ALARM --> INSIDE: RESET (if prev=INSIDE)
-    ALARM --> DRONEOUT: RESET (if prev=OUT)
-
-```
-
 ## 4. Drone Remote Unit (PC Subsystem)
 The PC application is developed in **Java** using **Swing** for the GUI and **JSSC** for Serial Communication. It follows the **Observer pattern** to separate the UI (`DRUView`) from the logic (`DRUController`). It allows operators to send Takeoff/Land commands and view real-time telemetry (State, Distance, Temp, Motion).
