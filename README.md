@@ -1,66 +1,76 @@
-### Embedded Systems and IoT  - ISI LT - a.y. 2025/2026
+# Smart Drone Hangar
 
-## Assignment #02 - *Smart Drone Hangar* 
+## 1. Introduction
+This project implements an embedded system for an automated drone hangar. The system consists of two main subsystems communicating via serial line:
+1.  **Drone Hangar (Arduino):** Manages sensors, actuators, and control logic.
+2.  **Drone Remote Unit (PC):** A GUI for remote control and telemetry monitoring.
 
-v1.1.1-20251112
- 
-We want to realise an embedded system called *Smart Drone Hangar*. The prototype  is meant to implement a simple smart hangar for a drone. 
+## 2. System Architecture (Drone Hangar)
+The Arduino code follows a **Task-Based Architecture** with a **Cooperative Scheduler**.
 
-### Description 
+The scheduler executes tasks based on a **50ms** base tick:
 
-#### Components
+* **SensingTask (Period: 50ms):** Acquires data from sensors (Sonar, Temperature, PIR) and updates the shared `Context`.
+* **LogicTask (Period: 100ms):** Implements the **Finite State Machine (FSM)**. It controls the actuators (Servo, LEDs, LCD) based on the system state and sensor data.
+* **CommTask (Period: 200ms):** Handles asynchronous serial communication with the PC (receiving commands, sending telemetry).
 
-The system is composed by two subsystems:
+## 3. Finite State Machine (FSM)
+The FSM (implemented in `LogicTask`) manages the system behavior through the following states:
 
-- **DRONE HANGAR** subsystem, based on Arduino 
-  - **DRONE PRESENCE DETECTOR (DPD)** is a PIR, to detect the presence of a drone near (on top) of the hangar.
-  - **DRONE DISTANCE DETECTOR (DDD)** is a sonar, to measure the distance of the drone when it is inside the hangar.
-  - **HANGAR DOOR (HD)** is a servo-motor, controlling the hangar door.
-  - **OPERATOR LCD** is a I2C LCD, used to interact with an operator.
-  - **L1** and **L2** are green leds, **L3** is a red led.
-  - **RESET** is a tactile button.
-  - **TEMP** is an analog temperature sensor.
+* **INSIDE:** Initial state. Door closed, waiting for takeoff command.
+* **TAKEOFF:** Door open, LED L2 blinking. Transitions to *DroneOut* when distance > D1.
+* **DRONEOUT:** Drone is outside. Door closed. Waiting for landing command and PIR detection.
+* **LANDING:** Door open, LED L2 blinking. Transitions to *Inside* when distance < D2.
+* **PREALARM:** Triggered by `Temp1`. Suspends new operations but **allows ongoing takeoff/landing to complete**.
+* **ALARM:** Triggered by `Temp2` or timeout. **Immediately closes the door** for safety, activates LED L3 (Red), and locks the system until the RESET button is pressed.
 
+```mermaid
+stateDiagram-v2
+    [*] --> INSIDE
 
-- **DRONE REMOTE UNIT (DRU)**, program running on the PC
-  - This GUI-based subsystem simulates a bridge to the drone, to send/receive commands. 
-  - It communicates via **serial line** with the DRONE HANGAR subsystem.  
+    state "INSIDE" as INSIDE
+    state "TAKE OFF" as TAKEOFF
+    state "DRONE OUT" as DRONEOUT
+    state "LANDING" as LANDING
+    state "PRE-ALARM" as PREALARM
+    state "ALARM" as ALARM
 
-#### Description of the behaviour
+    INSIDE: Door Closed, L1 ON
+    INSIDE: Display "DRONE INSIDE"
 
-At startup, the system begins with the hangar door **HD** closed, and it is assumed that the drone is inside, at rest. Indicator light **L1** is on, **L2** and **L3** are off, and the **LCD** displays the message `DRONE INSIDE`. 
+    TAKEOFF: Door Open, L2 Blink
+    TAKEOFF: Display "TAKE OFF"
 
-**Take-off phase**:
-The drone activates the hangar door opening command by sending a message through the **DRU** subsystem. Upon receiving the command, the **HD** door opens, the **LCD** displays `TAKE OFF`, and the system waits for the drone to exit. To determine when the drone has left, the **DDD** is used: when the measured distance is greater than `D1` for more than `T1` seconds, it is assumed that the drone has exited, and the **HD** door is closed. The **LCD** then displays `DRONE OUT`. 
+    DRONEOUT: Door Closed
+    DRONEOUT: Display "DRONE OUT"
 
-**Landing phase**:
-When the drone approaches the hangar, it sends the opening command (via **DRU**). If, upon receiving the command, the **DPD** detects the presence of the drone, the **HD** door opens and the **LCD** displays `LANDING`. The system then waits for the drone to enter and land. When the distance measured by the **DDD** is less than `D2` for more than `T2` seconds, it is assumed that the drone has landed, and the door is closed. The **LCD** then displays `DRONE INSIDE`.
+    LANDING: Door Open, L2 Blink
+    LANDING: Display "LANDING"
 
-During the take-off and landing phases, **L2** blinks, with period 0.5 second -- otherwise it is off.
+    PREALARM: L2 Blink (if moving)
+    PREALARM: Allow move completion
 
-Whenever the drone is inside the hangar (whether at rest, during take-off, or during landing), the temperature monitoring system is active to check for potential problems. If a temperature ≥ `Temp1` is detected for more than `T3` seconds, the system enters a pre-alarm state. In this state, new take-offs and landings are suspended until the system returns to normal operation. If a take-off or landing is already in progress, it is allowed to complete. If the temperature drops below `Temp1`, the system returns to normal operation. If a temperature `Temp2` > `Temp1` is detected for more than `T4` seconds, the **HD** door is closed (if it was open), the **L3** indicator light turns on, and the **LCD** displays `ALARM`. If the drone is outside the hangar, the `ALARM` message is also sent to the drone via **DRU**. All operations are suspended until the **RESET** button is pressed by an operator. When **RESET** is pressed, it is assumed that all issues have been resolved, and the system returns to the normal state.
+    ALARM: Door Closed, L3 ON
+    ALARM: Display "ALARM"
 
-The value of the `D1`,`D2`,`T1`,`T2`,`T3`,`T4`,`Temp1`,`Temp2` parameters is not fixed/specified (to be chosen, useful for prototyping/testing the system).
+    INSIDE --> TAKEOFF: CMD:TAKEOFF
+    TAKEOFF --> DRONEOUT: Dist > D1 (for T1)
+    DRONEOUT --> LANDING: CMD:LAND & Motion
+    LANDING --> INSIDE: Dist < D2 (for T2)
 
-The **DRU** subsystem is meant to have a GUI with controls to:
- - send command to the hangar, simulating behaviour of the drone (taking off and landing).
- - visualise:
-   - the current state of the drone (rest, taking off, operating, landing);
-   - the current state of the drone hangar (normal, alarm); 
-   - (when landing) the current distance to ground.
+    INSIDE --> PREALARM: Temp >= Temp1 (for T3)
+    TAKEOFF --> PREALARM: Temp >= Temp1 (for T3)
+    LANDING --> PREALARM: Temp >= Temp1 (for T3)
 
+    PREALARM --> INSIDE: Temp < Temp1
+    PREALARM --> TAKEOFF: Temp < Temp1
+    PREALARM --> LANDING: Temp < Temp1
 
-### The assignment
+    PREALARM --> ALARM: Time > T4
+    ALARM --> INSIDE: RESET (if prev=INSIDE)
+    ALARM --> DRONEOUT: RESET (if prev=OUT)
 
-Develop the embedded software on Arduino + PC connected through the serial line, implementing the Arduino part (**Drone Hangar**) in C++/Wiring e the PC part (**Drone Remote Unit**) in Java or in your favourite language.  **The Arduino program must be designed and implemented using task-based architectures and synchronous Finite State Machines**.
+```
 
-For any aspect not specified, you are free to choose the approach you consider more useful or valuable.
-
-**The Deliverable**
-
-The deliverable consists in a zipped folder `assignment-02.zip` including three directories:
-- `drone-hangar`, including the source code of the Arduino-based subsystem
-- `drone-remote-unit`, including the source code of the PC-based part
-- `doc`, including:  a brief **report** describing the solution, in particular the diagram of the FSMs and the  representation of the schema/breadboard – using tools such as TinkerCad or Fritzing , and a **short video** (or the link to a video on the UNIBO OneDrive cloud) demonstrating the system.
-
-
+## 4. Drone Remote Unit (PC Subsystem)
+The PC application is developed in **Java** using **Swing** for the GUI and **JSSC** for Serial Communication. It follows the **Observer pattern** to separate the UI (`DRUView`) from the logic (`DRUController`). It allows operators to send Takeoff/Land commands and view real-time telemetry (State, Distance, Temp, Motion).
