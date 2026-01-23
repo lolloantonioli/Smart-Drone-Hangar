@@ -21,9 +21,9 @@ Button* btnReset;
 Scheduler sched;
 Context* context;
 
-SensingTask* tSensing;
-LogicTask* tLogic;
-CommTask* tComm;
+Task* tSensing;
+Task* tLogic;
+Task* tComm;
 
 void setup() {
   Serial.begin(115200);
