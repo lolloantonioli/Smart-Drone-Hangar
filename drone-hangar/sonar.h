@@ -2,7 +2,6 @@
 #define SONAR_H
 
 #include <Arduino.h>
-#include <Servo.h>
 
 class Sonar {
   private:
@@ -12,5 +11,6 @@ class Sonar {
     Sonar(int trig, int echo);
     float getDistanceCM();
 };
+
 
 #endif
